@@ -6,7 +6,8 @@ async def main():
     messages=[
         {"role":"system","content":"You are a helpful assistant."},
     ]
-    await client.chat_completions(messages=messages,stream=False)
+    async for event in client.chat_completions(messages=messages,stream=True):
+        print(event)
     print("Done")
 
 asyncio.run(main())
