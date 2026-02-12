@@ -1,0 +1,48 @@
+from rich.console import Console
+from rich.theme import Theme
+from rich.rule import Rule
+from rich.text import Text
+
+AGENT_THEME = Theme(
+    {
+        # Core levels
+        "info": "bold cyan",
+        "success": "bold green",
+        "warning": "bold yellow",
+        "error": "bold red",
+        # Debug / internal
+        "debug": "dim white",
+        "trace": "dim magenta",
+        # Agent states
+        "thinking": "italic blue",
+        "processing": "bold blue",
+        "ready": "bold green",
+        # User vs System
+        "user": "bold bright_white",
+        "assistant": "bold bright_cyan",
+        "system": "bold magenta",
+        # Highlight / emphasis
+        "highlight": "bold bright_yellow",
+        "muted": "dim white",
+        # Headers / titles
+        "title": "bold underline bright_blue",
+        "subtitle": "bold bright_magenta",
+    }
+)
+_console:Console|None=None
+
+def get_console()->Console:
+    global _console
+    if _console is None:
+        _console=Console(theme=AGENT_THEME,highlight=False)
+    return _console
+
+class TUI:
+    def __init__(self,console:Console|None=None):
+        self.console=console or get_console()
+
+    def begin_assistant(self)->None:
+        self.console.print()
+        self.console.print(Rule(Text("Assistant",style="assistant")))
+    def stream_assistant_delta(self,content:str)->None:
+        self.console.print(content,markup=False,end=" ")
