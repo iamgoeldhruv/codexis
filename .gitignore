@@ -1,3 +1,5 @@
 .venv
 .env
 client/__pycache__
+agent/__pycache__
+ui/__pycache__

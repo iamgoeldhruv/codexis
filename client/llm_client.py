@@ -1,9 +1,9 @@
 import asyncio
-from re import S
-from typing import Any, AsyncGenerator
-from xxlimited import Str
 
-from client.response import EventType, StreamEvent, TextDelta, TokenUsage
+from typing import Any, AsyncGenerator
+
+
+from client.response import StreamEventType, StreamEvent, TextDelta, TokenUsage
 from openai import AsyncOpenAI, RateLimitError, APIConnectionError, APIError
 from dotenv import load_dotenv
 import os
@@ -54,7 +54,7 @@ class LLMClient:
                     await asyncio.sleep(backoff_time)
                 else:
                     yield StreamEvent(
-                        type=EventType.ERROR, error=f"Rate limit exceeded {e}."
+                        type=StreamEventType.ERROR, error=f"Rate limit exceeded {e}."
                     )
                     return
             except APIConnectionError as e:
@@ -63,12 +63,12 @@ class LLMClient:
                     await asyncio.sleep(backoff_time)
                 else:
                     yield StreamEvent(
-                        type=EventType.ERROR,
+                        type=StreamEventType.ERROR,
                         error=f"API Connection Error exceeded {e}.",
                     )
                     return
             except APIError as e:
-                yield StreamEvent(type=EventType.ERROR, error=f"API Error:{e}.")
+                yield StreamEvent(type=StreamEventType.ERROR, error=f"API Error:{e}.")
                 return
 
     async def _stream_response(
@@ -93,13 +93,13 @@ class LLMClient:
                 finish_reason = choice.finish_reason
             if delta.content:
                 yield StreamEvent(
-                    type=EventType.MESSAGE_DELTA,
+                    type=StreamEventType.MESSAGE_DELTA,
                     text_delta=TextDelta(content=delta.content),
                     usage=usage,
                     finish_reason=finish_reason,
                 )
         yield StreamEvent(
-            type=EventType.MESSAGE_COMPLETE,
+            type=StreamEventType.MESSAGE_COMPLETE,
             usage=usage,
             finish_reason=finish_reason,
         )
@@ -123,7 +123,7 @@ class LLMClient:
         else:
             usage = None
         return StreamEvent(
-            type=EventType.MESSAGE_COMPLETE,
+            type=StreamEventType.MESSAGE_COMPLETE,
             text_delta=text_delta,
             finish_reason=choice.finish_reason,
             usage=usage,

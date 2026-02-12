@@ -1,30 +1,43 @@
-from typing import Any
-from client.llm_client import LLMClient
+from agent.agent import Agent
+from agent.events import AgentEventType
+
 import asyncio
 import click
+import sys
+
+from ui.tui import TUI, get_console
+
+console = get_console()
 
 
 class CLI:
     def __init__(self):
-        pass
+        self.agent: Agent | None = None
+        self.tui = TUI(console)
 
-    def run_single(self):
-        pass
+    async def run_single(self, message: str) -> str | None:
+        async with Agent() as agent:
+            self.agent = agent
+            return await self._process_message(message)
 
-async def run(messages:list[dict[str,Any]]):
-    client=LLMClient()
-    async for event in client.chat_completions(messages=messages,stream=True):
-        print(event)
+    async def _process_message(self, message: str) -> str | None:
+        if not self.agent:
+            return None
+        async for event in self.agent.run(message):
+            if event and event.type == AgentEventType.TEXT_DELTA:
+                content = event.data.get("content", "") if event else ""
+                self.tui.stream_assistant_delta(content)
 
 
 @click.command()
-@click.argument("prompt",required=False)
-def main(prompt:str|None):
-    print("prompt",prompt)
-    
-   
-    asyncio.run(run(messages))
-   
-    print("Done")
+@click.argument("prompt", required=False)
+def main(prompt: str | None):
+    cli = CLI()
+    message = [{"role": "user", "content": prompt}] if prompt else None
+    if prompt:
+        result = asyncio.run(cli.run_single(prompt))
+        if not result:
+            sys.exit(1)
+
 
 main()
