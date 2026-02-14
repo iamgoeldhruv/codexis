@@ -17,6 +17,7 @@ class LLMClient:
         self.max_retries: int = 3
 
     def get_client(self) -> AsyncOpenAI:
+
         if self.client is None:
             self.client = AsyncOpenAI(
                 api_key=os.getenv("OPENROUTER_API_KEY"),

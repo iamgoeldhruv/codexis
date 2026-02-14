@@ -12,7 +12,7 @@ class Agent:
 
     async def run(self, message: str):
         yield AgentEvent.agent_start(message)
-        final_text: str = ""
+        final_text: str|None = None
         async for event in self._agentic_loop():
             yield event
             if event and event.type == AgentEventType.TEXT_COMPLETE:
