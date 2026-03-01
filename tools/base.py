@@ -3,13 +3,14 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ValidationError
 from dataclasses import dataclass
+
 
 @dataclass
 class ToolInvocation:
-    cwd:Path
-    parameters:dict[str,Any]
+    cwd: Path
+    parameters: dict[str, Any]
 
 
 class ToolKind(str, Enum):
@@ -19,6 +20,14 @@ class ToolKind(str, Enum):
     MEMPORY = "memory"
     NETWORK = "network"
     MCP = "mcp"
+
+
+@dataclass
+class ToolResults:
+    success: bool
+    output: str
+    error: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class Tool(abc.ABC):
@@ -31,6 +40,36 @@ class Tool(abc.ABC):
 
     def schema(self) -> dict[str, Any] | type[BaseModel]:
         raise NotImplementedError("Tool schema not implemented for base tool")
+
     abc.abstractmethod
-    async def execute(self,invocation:ToolInvocation)->ToolResults:
+
+    async def execute(self, invocation: ToolInvocation) -> ToolResults:
         pass
+
+    def validate_params(self, params: dict[str, Any]) -> list[Any]:
+        schema = self.schema
+        if isinstance(schema, type) and issubclass(schema, BaseModel):
+            try:
+                BaseModel(**params)
+            except ValidationError as e:
+                errors = []
+                for error in e.errors():
+                    field = ".".join(str(loc) for loc in error.get("loc", []))
+                    msg = error.get("msg", "Validation error")
+                    errors.append(f"Parameter '{field}': {msg}")
+                return errors
+            except Exception as e:
+                return [str(e)]
+
+        return []
+
+    def is_mutating(self, params: dict[str, Any]) -> bool:
+        return self.kind in {
+            ToolKind.WRITE,
+            ToolKind.SHELL,
+            ToolKind.MEMPORY,
+            ToolKind.NETWORK,
+        }
+    
+    async def get_confirmation(self,invocation:ToolInvocation)->ToolInvocation |None:
+        if not self.is_mutating(invocation.parameters):
