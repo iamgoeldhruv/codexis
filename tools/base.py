@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError
 from dataclasses import dataclass
+from pydantic.json_schema import model_json_schema
 
 
 @dataclass
@@ -20,6 +21,13 @@ class ToolKind(str, Enum):
     MEMPORY = "memory"
     NETWORK = "network"
     MCP = "mcp"
+
+
+@dataclass
+class ToolConfirmation:
+    tool_name: str
+    params: dict[str, Any]
+    description: str
 
 
 @dataclass
@@ -70,6 +78,42 @@ class Tool(abc.ABC):
             ToolKind.MEMPORY,
             ToolKind.NETWORK,
         }
-    
-    async def get_confirmation(self,invocation:ToolInvocation)->ToolInvocation |None:
+
+    async def get_confirmation(
+        self, invocation: ToolInvocation
+    ) -> ToolConfirmation | None:
         if not self.is_mutating(invocation.parameters):
+            return None
+
+        return ToolConfirmation(
+            tool_name=self.name,
+            params=invocation.parameters,
+            description=f"execute tool {self.name}",
+        )
+
+    def to_openai_schema(self) -> dict[str, Any]:
+        schema = self.schema
+        if isinstance(schema, type) and issubclass(schema, BaseModel):
+            json_schema = model_json_schema(schema, mode="serialization")
+            return {
+                "name": self.name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": json_schema.get("properties", {}),
+                    "required": json_schema.get("required", []),
+                },
+            }
+        if isinstance(schema, dict):
+            result = {
+                "name": self.name,
+                "description": self.description,
+            }
+            if "parameters" in schema:
+                result["parameters"] = schema["parameters"]
+            else:
+                result["parameters"] = schema
+            return result
+        raise ValueError(
+            f"Invalid schema type for tool{self.name} of type {type(schema)}"
+        )
