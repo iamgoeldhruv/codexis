@@ -36,14 +36,17 @@ class ToolResults:
     output: str
     error: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+    truncated: bool = False
 
     @classmethod
     def error_result(cls, error: str, output: str = ""):
         return cls(success=False, output=output, error=error)
 
     @classmethod
-    def success_result(cls, output: str, **kwargs: Any):
-        return cls(success=True, output=output, error=None, **kwargs)
+    def success_result(cls, truncated: bool, output: str, **kwargs: Any):
+        return cls(
+            success=True, output=output, error=None, truncated=truncated, **kwargs
+        )
 
 
 class Tool(abc.ABC):

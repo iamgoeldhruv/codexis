@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 
 from tools.base import Tool, ToolInvocation, ToolKind, ToolResults
 from utils.path import is_binary_file, resolve_path
-from utils.text import count_tokens
+from utils.text import count_tokens, truncate_text
 
 
 class ReadFileParams(BaseModel):
@@ -26,7 +26,7 @@ class ReadFileTool(Tool):
     schema = ReadFileParams
 
     MAX_SIZE = 1204 * 1024 * 10
-    MAX_OUTPUT_TOKEN=25000
+    MAX_OUTPUT_TOKEN = 25000
 
     async def execute(self, invocation: ToolInvocation) -> ToolResults:
         params = ReadFileParams(**invocation.parameters)
@@ -48,29 +48,58 @@ class ReadFileTool(Tool):
                 f"Cannot Read Binary Files {path.name} {size_st}"
                 f"This Tool only reads text file"
             )
-
         try:
-            content = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            content = path.read_text(encoding="latin-1")
+            try:
+                content = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                content = path.read_text(encoding="latin-1")
 
-        lines = content.splitlines()
-        total_lines = len(lines)
-        if total_lines == 0:
-            return ToolResults.success_result("File is empty", metadata={"lines": 0})
-        start_idx = max(0, params.offset - 1)
+            lines = content.splitlines()
+            total_lines = len(lines)
+            if total_lines == 0:
+                return ToolResults.success_result(
+                    "File is empty", truncated=False, metadata={"lines": 0}
+                )
+            start_idx = max(0, params.offset - 1)
 
-        if params.limit:
-            end_idx = min(start_idx + params.limit, total_lines)
-        else:
-            end_idx = total_lines
+            if params.limit:
+                end_idx = min(start_idx + params.limit, total_lines)
+            else:
+                end_idx = total_lines
 
-        selected_lines = lines[start_idx:end_idx]
-        formatted_lines = []
-        for i, line in enumerate(selected_lines, start=start_idx + 1):
-            formatted_lines.append(f"{i:6}:{line}")
-        output = "\n".join(formatted_lines)
+            selected_lines = lines[start_idx:end_idx]
+            formatted_lines = []
+            for i, line in enumerate(selected_lines, start=start_idx + 1):
+                formatted_lines.append(f"{i:6}:{line}")
+            output = "\n".join(formatted_lines)
 
-        token_count=count_tokens(output)
-        if token_count>self.MAX_OUTPUT_TOKEN:
-            
+            token_count = count_tokens(output)
+            truncated = False
+            if token_count > self.MAX_OUTPUT_TOKEN:
+                output = truncate_text(
+                    output,
+                    self.MAX_OUTPUT_TOKEN,
+                    suffix=f"\n...[truncated,{total_lines} total lines]",
+                )
+                truncated = True
+            metadata_lines = []
+            if start_idx > 0 or end_idx < total_lines:
+                metadata_lines.append(
+                    f"showing lines {start_idx + 1} to {end_idx} of {total_lines}"
+                )
+            if metadata_lines:
+                header = "|".join(metadata_lines) + "\n\n"
+                output = header + output
+
+            return ToolResults.success_result(
+                output=output,
+                truncated=truncated,
+                metadata={
+                    "path": str(path),
+                    "total_lines": total_lines,
+                    "start_line": start_idx + 1,
+                    "end_line": end_idx,
+                },
+            )
+        except Exception as e:
+            return ToolResults.error_result(f"Error reading file:{str(e)}")
