@@ -3,3 +3,8 @@
 client/__pycache__
 agent/__pycache__
 ui/__pycache__
+tools/__pycache__
+context/__pycache__
+tools/builtin/__pycache__
+utils/__pycache__
+prompts/__pycache__
