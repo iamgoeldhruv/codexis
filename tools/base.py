@@ -48,6 +48,12 @@ class ToolResults:
             success=True, output=output, error=None, truncated=truncated, **kwargs
         )
 
+    @classmethod
+    def to_model_output(self) -> str:
+        if self.success:
+            return self.output
+        return f"Error:{self.error}\n\nOutput:\n{self.output}"
+
 
 class Tool(abc.ABC):
     name: str = "base_tool"

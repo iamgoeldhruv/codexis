@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from client.response import TokenUsage
+from tools.base import ToolResults
 
 
 class AgentEventType(str, Enum):
@@ -64,5 +65,20 @@ class AgentEvent:
                 "call_id": call_id,
                 "name": name,
                 "arguments": arguments,
+            },
+        )
+
+    @classmethod
+    def tool_call_complete(cls, call_id: str, name: str, result=ToolResults):
+        return cls(
+            type=AgentEventType.TOOL_CALL_COMPLETE,
+            data={
+                "call_id": call_id,
+                "name": name,
+                "success": result.success,
+                "output": result.output,
+                "error": result.error,
+                "metadata": result.metadata,
+                "truncated": result.truncated,
             },
         )

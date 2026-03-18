@@ -1,9 +1,10 @@
 from __future__ import annotations
+from pathlib import Path
 from typing import AsyncGenerator, cast
 
 from agent.events import AgentEvent, AgentEventType
 from client.llm_client import LLMClient
-from client.response import StreamEventType, ToolCall
+from client.response import StreamEventType, ToolCall, ToolResultsMessage
 from context.manager import ContextManager
 from tools.builtin.registry import create_default_registry
 
@@ -34,6 +35,7 @@ class Agent:
             return
         tool_schemas = self.tool_registry.get_schemas()
         tool_calls: list[ToolCall] = []
+        tool_call_results:list[ToolResultsMessage] = []
         async for event in client.chat_completions(
             messages=self.context_manager.get_messages(),
             tools=tool_schemas if tool_schemas else None,
@@ -56,6 +58,17 @@ class Agent:
         for tool_call in tool_calls:
             yield AgentEvent.tool_call_start(
                 tool_call.call_id, tool_call.name, tool_call.arguments
+            )
+            result=await self.tool_registry.invoke(
+                tool_call.name, tool_call.arguments, Path.cwd
+            )
+            yiled AgentEvent.tool_call_complete(
+                tool_call.call_id,tool_call.name,result
+            )
+            tool_call_results.append(
+                ToolResultsMessage(
+                    
+                )
             )
 
     async def __aenter__(self) -> Agent:
