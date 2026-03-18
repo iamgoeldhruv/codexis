@@ -14,6 +14,9 @@ class AgentEventType(str, Enum):
     TEXT_DELTA = "text_delta"
     TEXT_COMPLETE = "text_complete"
 
+    TOOL_CALL_START = "tool_call_start"
+    TOOL_CALL_COMPLETE = "tool_call_complete"
+
 
 @dataclass
 class AgentEvent:
@@ -26,7 +29,7 @@ class AgentEvent:
 
     @classmethod
     def agent_end(
-        cls, response: str , token_usage: TokenUsage | None = None
+        cls, response: str, token_usage: TokenUsage | None = None
     ) -> AgentEvent:
         return cls(
             type=AgentEventType.AGENT_END,
@@ -35,15 +38,31 @@ class AgentEvent:
                 "usage": token_usage.__dict__ if token_usage else None,
             },
         )
+
     @classmethod
-    def agent_error(cls, error: str,details:dict[str,Any]|None=None) -> AgentEvent:
-        return cls(type=AgentEventType.AGENT_ERROR, data={"error": error,"details":details or {}})
-    
+    def agent_error(
+        cls, error: str, details: dict[str, Any] | None = None
+    ) -> AgentEvent:
+        return cls(
+            type=AgentEventType.AGENT_ERROR,
+            data={"error": error, "details": details or {}},
+        )
 
     @classmethod
     def text_complete(cls, content: str) -> AgentEvent:
         return cls(type=AgentEventType.TEXT_COMPLETE, data={"content": content})
-    
+
     @classmethod
     def text_delta(cls, content: str) -> AgentEvent:
         return cls(type=AgentEventType.TEXT_DELTA, data={"content": content})
+
+    @classmethod
+    def tool_call_start(cls, call_id: str, name: str, arguments: dict[str, Any]):
+        return cls(
+            type=AgentEventType.TOOL_CALL_START,
+            data={
+                "call_id": call_id,
+                "name": name,
+                "arguments": arguments,
+            },
+        )

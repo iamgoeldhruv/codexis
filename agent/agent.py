@@ -3,7 +3,7 @@ from typing import AsyncGenerator, cast
 
 from agent.events import AgentEvent, AgentEventType
 from client.llm_client import LLMClient
-from client.response import StreamEventType
+from client.response import StreamEventType, ToolCall
 from context.manager import ContextManager
 from tools.builtin.registry import create_default_registry
 
@@ -33,18 +33,30 @@ class Agent:
             yield None
             return
         tool_schemas = self.tool_registry.get_schemas()
+        tool_calls: list[ToolCall] = []
         async for event in client.chat_completions(
-            messages=self.context_manager.get_messages(), tools=tool_schemas if tool_schemas else None,stream=True
+            messages=self.context_manager.get_messages(),
+            tools=tool_schemas if tool_schemas else None,
+            stream=True,
         ):
+            print(event)
             if event.type == StreamEventType.MESSAGE_DELTA:
                 content = event.text_delta.content if event.text_delta else ""
                 response_text += content
                 yield AgentEvent.text_delta(content)
-            if event.type == StreamEventType.ERROR:
+            elif event.type == StreamEventType.TOOL_CALL_COMPLETE:
+                if event.tool_call:
+                    tool_calls.append(event.tool_call)
+            elif event.type == StreamEventType.ERROR:
                 yield AgentEvent.agent_error(event.error or "Unknown error occured")
         self.context_manager.add_assistant_message(response_text or None)
         if response_text:
             yield AgentEvent.text_complete(response_text)
+
+        for tool_call in tool_calls:
+            yield AgentEvent.tool_call_start(
+                tool_call.call_id, tool_call.name, tool_call.arguments
+            )
 
     async def __aenter__(self) -> Agent:
         return self

@@ -1,6 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
+import json
 
 
 @dataclass
@@ -35,17 +37,19 @@ class TokenUsage:
             cached_tokens=self.cached_tokens + other.cached_tokens,
         )
 
+
 @dataclass
 class ToolCallDelta:
     call_id: str
     name: str | None = None
-    arguments_delta: str = ""
+    arguments: dict[str,Any] = {}
+
 
 @dataclass
 class ToolCall:
     call_id: str
     name: str | None = None
-    arguments_delta: str = ""
+    arguments: dict[str, Any]={}
 
 
 @dataclass
@@ -58,3 +62,12 @@ class StreamEvent:
     tool_call: ToolCall | None = None
 
     usage: TokenUsage | None = None
+
+
+def parse_tool_call_arguments(arguments: str) -> dict[str, Any]:
+    if not arguments:
+        return {}
+    try:
+        return json.loads(arguments)
+    except json.JSONDecodeError:
+        return {"raw_arguments": arguments}
