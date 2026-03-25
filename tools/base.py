@@ -48,7 +48,7 @@ class ToolResults:
             success=True, output=output, error=None, truncated=truncated, **kwargs
         )
 
-    @classmethod
+    
     def to_model_output(self) -> str:
         if self.success:
             return self.output
@@ -75,7 +75,7 @@ class Tool(abc.ABC):
         schema = self.schema
         if isinstance(schema, type) and issubclass(schema, BaseModel):
             try:
-                BaseModel(**params)
+                schema(**params)
             except ValidationError as e:
                 errors = []
                 for error in e.errors():

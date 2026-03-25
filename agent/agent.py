@@ -35,13 +35,12 @@ class Agent:
             return
         tool_schemas = self.tool_registry.get_schemas()
         tool_calls: list[ToolCall] = []
-        tool_call_results:list[ToolResultsMessage] = []
+        tool_call_results: list[ToolResultsMessage] = []
         async for event in client.chat_completions(
             messages=self.context_manager.get_messages(),
             tools=tool_schemas if tool_schemas else None,
             stream=True,
         ):
-            print(event)
             if event.type == StreamEventType.MESSAGE_DELTA:
                 content = event.text_delta.content if event.text_delta else ""
                 response_text += content
@@ -59,16 +58,22 @@ class Agent:
             yield AgentEvent.tool_call_start(
                 tool_call.call_id, tool_call.name, tool_call.arguments
             )
-            result=await self.tool_registry.invoke(
-                tool_call.name, tool_call.arguments, Path.cwd
+            result = await self.tool_registry.invoke(
+                tool_call.name, tool_call.arguments, Path.cwd()
             )
-            yiled AgentEvent.tool_call_complete(
-                tool_call.call_id,tool_call.name,result
+            yield AgentEvent.tool_call_complete(
+                tool_call.call_id, tool_call.name, result
             )
             tool_call_results.append(
                 ToolResultsMessage(
-                    
+                    tool_call_id=tool_call.call_id,
+                    content=result.to_model_output(),
+                    is_error=not result.success,
                 )
+            )
+        for tool_result in tool_call_results:
+            self.context_manager.add_tool_results(
+                tool_result.tool_call_id, tool_result.content
             )
 
     async def __aenter__(self) -> Agent:

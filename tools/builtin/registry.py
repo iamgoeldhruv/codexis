@@ -38,7 +38,7 @@ class ToolRegistry:
     def get_schemas(self) -> list[dict[str, Any]]:
         return [tool.to_openai_schema() for tool in self.get_tools()]
 
-    async def invoke(self, name: str, params: dict[str, Any], cwd: Path | None):
+    async def invoke(self, name: str, params: dict[str, Any], cwd: Path)->ToolResults:
         tool = self.get(name)
         if tool is None:
             return ToolResults.error_result(
@@ -55,7 +55,8 @@ class ToolRegistry:
         invocation = ToolInvocation(parameters=params, cwd=cwd)
 
         try:
-            await tool.execute(invocation)
+            result=await tool.execute(invocation)
+            return result
         except Exception as e:
             logger.exception(f"Internal error {name}")
             return ToolResults.error_result(

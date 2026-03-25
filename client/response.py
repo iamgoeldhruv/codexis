@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 import json
@@ -42,14 +42,14 @@ class TokenUsage:
 class ToolCallDelta:
     call_id: str
     name: str | None = None
-    arguments: dict[str, Any] = {}
+    arguments: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class ToolCall:
     call_id: str
     name: str | None = None
-    arguments: dict[str, Any] = {}
+    arguments: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
