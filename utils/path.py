@@ -7,6 +7,21 @@ def resolve_path(base: str | Path, path: str | Path):
         return path.resolve()
     return Path(base).resolve() / path
 
+def display_path_relative_to_cwd(path: str, cwd: str | Path|None)->str:
+    try:
+        p=Path(path)
+    except Exception:
+        return path
+    if cwd:
+        try:
+            return str(p.relative_to(cwd))
+        except ValueError:
+            pass
+    return str(p)
+
+
+    
+    
 
 def is_binary_file(path: Path):
     try:
